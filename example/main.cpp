@@ -13,10 +13,12 @@ public:
 		std::unique_lock<std::mutex> lock(m_);
 		while (count_.load() < MAX)
 		{
+			cv_.wait(lock, [this]
+					 { return !condition ? true : false; });
 			std::cout << "Ping" << std::endl;
+			condition = !condition;
 			count_++;
-			cv_.notify_all();
-			cv_.wait(lock);
+			cv_.notify_one();
 		}
 	}
 
@@ -25,14 +27,17 @@ public:
 		std::unique_lock<std::mutex> lock(m_);
 		while (count_.load() < MAX)
 		{
+			cv_.wait(lock, [this]
+					 { return condition ? true : false; });
 			std::cout << "Pong" << std::endl;
+			condition = !condition;
 			count_++;
-			cv_.notify_all();
-			cv_.wait(lock);
+			cv_.notify_one();
 		}
 	}
 
 private:
+	bool condition = false;
 	std::atomic<std::size_t> count_;
 	std::mutex m_;
 	std::condition_variable cv_;
